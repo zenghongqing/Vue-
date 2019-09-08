@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>keep-alive</title>
+</head>
+<body>
+    <div id="app"><keep-alive><component :is="view"></component></keep-alive><button @click="changeView">切换</button></div>    
+    <script src="./vue.js"></script>
+    <script>
+        Vue.component('view1', {
+            template: '<div>view component1</div>'
+        })
+        Vue.component('view2', {
+            template: '<div>view component2</div>'
+        })
+        new Vue({
+            el: '#app',
+            data: {
+                view: 'view1'
+            },
+            methods: {
+                changeView () {
+                    this.view = this.view === 'view1' ? 'view2' : 'view1'
+                }
+            }
+        })
+    </script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>数据双向绑定</title>
+</head>
+<body>
+    <div id='app'>
+        <input type="text" v-model="text">
+        {{ text }}
+    </div>
+    <!-- <script src="./mvvm.js"></script> -->
+    <script>
+        class Dep {
+            constructor () {
+                this.subs = []
+            }
+            addSub (sub) {
+                this.subs.push(sub)
+            }
+            // Watcher的addDep来将该Dep添加到Watcher的newDeps数组中
+            depend () {
+                Dep.target.push(this)
+            }
+            notify () {
+                this.subs.forEach(sub => {
+                    sub.update()
+                })
+            }
+        }
+        class Watcher {
+            constructor (vm, node, name, nodeType) {
+                Dep.target = this
+                console.log(this)
+                this.name = name
+                this.node = node
+                this.nodeType = nodeType
+                this.vm = vm
+                this.update()
+                Dep.target = null
+            }
+            update () {
+                this.get()
+                if (this.nodeType === 'text') {
+                    this.node.nodeValue = this.value
+                }
+                if (this.nodeType === 'input') {
+                    this.node.value = this.value
+                }
+            }
+            get () {
+                this.value = this.vm[this.name]
+            }
+        }
+
+        class Vue {
+            constructor (opt) {
+                this.data = opt.data
+                let data = opt.data
+                this.observe(data, this)
+                let id = opt.el
+                let dom = this.nodeToFragment(document.getElementById(id), this)
+                // 编译完成后，将dom返回到app中
+                document.getElementById(id).appendChild(dom)
+                // let dom = node
+                // let root = document.querySelector(opt.el)
+            }
+            nodeToFragment (node, vm) {
+                let frag = document.createDocumentFragment()
+                let child
+                while (child = node.firstChild) {
+                    this.compile(child, vm)
+                    frag.appendChild(child)
+                    // console.log(child, '111')
+                }
+                return frag
+            }
+            compile (node, vm) {
+                let reg = /\{\{(.*)\}\}/
+                // 节点类型为元素
+                if (node.nodeType === 1) {
+                    let attr = node.attributes,
+                    name
+                    for (let i = 0; i < attr.length; i++) {
+                        if (attr[i].nodeName === 'v-model') {
+                            name = attr[i].nodeValue
+                            node.addEventListener('input', function (e) {
+                                vm[name] = e.target.value
+                            })
+                            node.value = vm[name]
+                            node.removeAttribute('v-model')
+                        }
+                    }
+                    new Watcher(vm, node, name, 'input')
+                }
+                if (node.nodeType === 3) {
+                    if (reg.test(node.nodeValue)) {
+                        let name = RegExp.$1
+                        name = name.trim()
+                        new Watcher(vm, node, name, 'text')
+                    }
+                }
+            }
+            observe (data, vm) {
+                if (!data || typeof data !== 'object') return
+                // 取出所有属性遍历
+                Object.keys(data).forEach(key => {
+                    this.defineReactive(vm, key, data[key])
+                })
+            }
+            defineReactive (vm, key, value) {
+                this.observe(value)
+                let dep = new Dep()
+                Object.defineProperty(vm, key, {
+                    enumerable: true,
+                    configurable: false,
+                    get: function () {
+                        if (Dep.target) {
+                            dep.addSub(Dep.target)
+                        }
+                        return value
+                    },
+                    set: function (newVal) {
+                        if (value === newVal) return
+                        console.log('哈哈哈，监听到值变化了 ', value, ' --> ', newVal);
+                        value = newVal
+                        dep.notify()
+                    }
+                })
+            }
+        }
+
+        let vm = new Vue({
+            el: 'app',
+            data: {
+                text: 'hello world'
+            }
+        })
+    </script>
+</body>
+</html>

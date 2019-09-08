@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Vue源码</title>
+</head>
+<body>
+    <div id="app">
+        {{ message }}
+        <button @click="update">更新</button>
+    </div>
+    
+    <script src="./vue.js"></script>
+    <script>
+        
+        let vm = new Vue({
+            el: '#app',
+            data: {
+                message: 'Hello Wolrd',
+                obj: {
+                    a: 1
+                }
+            },
+            watch: {
+                obj: {
+                    handler (oldVal, newVal) {
+                        console.log(oldVal, newVal)
+                    },
+                    deep: true
+                }
+            },
+            created () {
+                this.$set(this.obj, 'b', 12)
+                this.$delete(this.obj, 'b')
+            },
+            methods: {
+                update () {
+                    this.message = 'hello vue.js'
+                    this.obj.a = 3
+                }
+            }
+        })
+    </script>
+</body>
+</html>

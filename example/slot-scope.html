@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Vue源码</title>
+</head>
+<body>
+    <div id="app"><app-layout :items="items"><template slot-scope="list"><div>{{ list.data }}</div></template></app-layout></div>
+    <script src="./vue.js"></script>
+    <script>
+        Vue.component('app-layout', {
+            template: `<div><slot v-for="(item,index) in items" :data="item.text"></slot></div>`,
+            props: {
+                items: Array
+            }
+        })
+        new Vue({
+            el: '#app',
+            data: {
+                items: [{
+                    text: 'text1'
+                }]
+            }
+        })
+    </script>
+</body>
+</html>

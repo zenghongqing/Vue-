@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="./vue.js"></script>
+    <title>Vue源码</title>
+</head>
+<body>
+    <div id="app"><input type="text" class="form-control" v-model="keywords" v-focus></div>
+    <script>
+        Vue.directive("focus", {
+            // 注意： 在每个函数中， 第一个参数永远是el， 表示被绑定了指令的那个元素，这个el参数，是一个原生的JS对象
+            bind: function(el){ // 每当指令绑定到元素上的时候，会立即执行这个bind函数，只执行一次
+
+            },
+            inserted: function(el){ // inserted 表示元素插入到DOM中的时候，会执行inserted函数【触发一次】
+                el.focus()
+            },
+            updated: function(el) { // 当VNode更新的时候，会执行updated，可能会触发多次
+                
+            },
+        })
+        new Vue({
+            el: '#app',
+            data: {
+                message: 'Hello Wolrd',
+                count: 0,
+                keywords: ''
+            },
+            created () {
+            },
+            methods: {
+            }
+        })
+    </script>
+</body>
+</html>

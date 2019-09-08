@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Vue源码</title>
+</head>
+<body>
+    <div id="app">
+        <button-counter :count-total="count" v-on:increment="incremenTotal"></button-counter>
+    </div>
+    
+    <script src="./vue.js"></script>
+    <script>
+        Vue.component('button-counter', {
+            template: `<button v-on:click="incrementCounter">{{ counter }}</button>`,
+            data: function () {
+                return {
+                    counter: 0,
+                    bar: this.foo
+                }
+            },
+            inject: ['foo'],
+            props: {
+                countTotal: {
+                    type: Number,
+                    default: 0
+                }
+            },
+            methods: {
+                incrementCounter () {
+                    this.counter += 1
+                    this.$emit('increment')
+                }
+            }
+        })
+        new Vue({
+            el: '#app',
+            data: {
+                message: 'Hello World',
+                count: 1,
+                arr: [],
+                total: 0,
+                obj: {
+                    a: 1
+                }
+            },
+            provide: {
+                foo: 'bar'
+            },
+            computed: {
+                aDouble () {
+                    return this.total + 1
+                }
+            },
+            created () {
+                this.obj.a = 2
+                console.log(this.count++)
+                this.arr.push(this.count)
+                this.total = 5
+                throw new Error('111')
+                this.$set(this.obj, 'b', 'foo')
+            },
+            methods: {
+                incremenTotal () {
+                    console.log(this.aDouble)
+                }
+            }
+        })
+    </script>
+</body>
+</html>

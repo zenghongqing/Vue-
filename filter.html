@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Vue源码</title>
+</head>
+<body>
+    <div id="app">
+        <button-counter v-test :count-total="count" v-on:increment="incremenTotal"></button-counter>
+    </div>
+    
+    <script src="./vue.js"></script>
+    <script>
+        Vue.component('button-counter', {
+            template: `<button v-on:click="incrementCounter">{{ counter }}</button>`,
+            data: function () {
+                return {
+                    counter: 0
+                }
+            },
+            props: {
+                countTotal: {
+                    type: Number,
+                    default: 0
+                }
+            },
+            methods: {
+                incrementCounter () {
+                    this.counter += 1
+                    this.$emit('increment')
+                }
+            }
+        })
+        new Vue({
+            el: '#app',
+            data: {
+                count: 1,
+                arr: [],
+                total: 0,
+                obj: {
+                    a: 1
+                }
+            },
+            directives: {
+                'test': {
+                    bind() {
+                    // 当指令绑定到 HTML 元素上时触发.**只调用一次**
+                    console.log('bind triggerd')
+                    },
+                    inserted() {
+                    // 当绑定了指令的这个HTML元素插入到父元素上时触发(在这里父元素是 `div#app`)**.但不保证,父元素已经插入了 DOM 文档.**
+                    console.log('inserted triggerd')
+                    },
+                    updated() {
+                    // 所在组件的`VNode`更新时调用.
+                    console.log('updated triggerd')
+                    },
+                    componentUpdated() {
+                    // 指令所在组件的 VNode 及其子 VNode 全部更新后调用。
+                    console.log('componentUpdated triggerd')
+                    
+                    },
+                    unbind() {
+                    // 只调用一次，指令与元素解绑时调用.
+                    console.log('unbind triggerd')
+                    }
+                }
+            },
+            created () {
+            },
+            methods: {
+                incremenTotal () {
+                    console.log(this.aDouble)
+                }
+            }
+        })
+    </script>
+</body>
+</html>

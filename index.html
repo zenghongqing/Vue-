@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Vue源码</title>
+</head>
+<body>
+    <div id="app">
+        <p v-change="count">{{ message }}</p>
+        <!-- <input type="button" value="点击我" @click="changeTitle"/> -->
+        <button-counter :count="count" v-on:increment="incremenTotal"></button-counter>
+        <!-- <p>{{ message }}</p>  -->
+    </div>
+    
+    <script src="./vue.js"></script>
+    <script>
+        Vue.component('button-counter', {
+            template: `<button v-on:click="incrementCounter">{{ counter }}</button>`,
+            data: function () {
+                return {
+                    counter: 0,
+                    bar: this.foo
+                }
+            },
+            inject: ['foo'],
+            props: {
+                count: {
+                    type: Number,
+                    default: 0
+                }
+            },
+            methods: {
+                incrementCounter () {
+                    this.counter += 1
+                    this.$emit('increment')
+                }
+            }
+        })
+        new Vue({
+            el: '#app',
+            data: {
+                message: 'Hello World',
+                count: 1,
+                arr: [],
+                total: 0,
+                obj: {
+                    a: 1
+                }
+            },
+            provide: {
+                foo: 'bar'
+            },
+            // computed: {
+            //     total () {
+            //         return this.count
+            //     }
+            // },
+            watch: {
+                obj: {
+                    handler: function (val, newVal) {
+                        console.log(val, newVal)
+                    },
+                    deep: true
+                }
+            },
+            created () {
+                this.obj.a = 2
+                console.log(this.count++)
+                this.arr.push(this.count)
+                throw new Error('111')
+                this.$set(this.obj, 'b', 'foo')
+            },
+            // directives: {
+            //     change: function (el, bindings) {
+            //         console.log('指令已经绑定到元素了');
+            //         console.log(el);
+            //         console.log(bindings);
+            //         //准备将传递来的参数
+            //         // 显示在调用该指令的元素的innerHTML
+            //         el.innerHTML = bindings.value;
+            //     }
+            // },
+            methods: {
+                changeTitle: function () {
+                    this.$nextTick(() => {
+                        this.message = 'changed'
+                        console.log(222)
+                    })
+                    console.log(111)
+                },
+                incremenTotal () {
+                    this.total += 1
+                }
+            }
+            // template: '#app'
+        })
+        Vue.directive('change', {
+            bind: function (el, bindings) {
+                el.innerHTML = bindings.value;
+            },
+            inserted: function () {}
+        })
+        Vue.use({
+            install: function () {}
+        })
+
+        Vue.config.errorHandler = function (err, vm, info) {
+            console.log(err, vm, info, '错误信息')
+        }
+
+
+        // 创建并挂载
+        // var MyComponent = Vue.extend({
+        //     template: '<div>Hello!</div>'
+        // })
+        // new MyComponent().$mount('#app')
+
+        // Vue.directive('my-directive', function () {})
+
+        // Vue.use({
+        //     install: (Vue) => {}
+        // })
+        // 在文档外渲染并且随后挂载
+        // var component = new MyComponent().$mount()
+        // document.getElementById('app').appendChild(component.$el)
+    </script>
+    <!-- <script src="./index.js"></script> -->
+</body>
+</html>

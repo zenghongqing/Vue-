@@ -14,6 +14,7 @@ Vue.component('view2', {
 })
 ```
 。
+### keep-alive父子组件的解析
 动态组件component标签元素会在closeElement函数执行过程中，由processComponent处理
 ```
 function processComponent (el) {
@@ -100,7 +101,7 @@ _c('div',{
     ])
 ], 1)
 ```
-其中_c表示createElem创建元素vnode, _v创建文本类型的vnode, _c(view, {tag: "component"})], 1)过程如下:
+其中_c表示createElem创建元素vnode, _v创建文本类型的vnode。keep-alive的子组件component变为`_c(view, {tag: "component"})], 1)`然后生成vnode的过程如下:
 ```
 function createElement (
     context,
@@ -130,6 +131,7 @@ var vnode, ns;
         );
       } else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
         // component
+        // 创建子组件的vnode
         vnode = createComponent(Ctor, data, context, children, tag);
       } else {
         // unknown or unlisted namespaced elements
@@ -241,6 +243,20 @@ function createComponent (
   child: undefined
 }
 ```
+### keep-alive组件
+keep-alive组件是Vue内部定义的组件，它的实现也是一个对象，注意它有一个属性 abstract 为 true，是一个抽象组件。在初始化initLifecycle过程中
+```
+// locate first non-abstract parent
+let parent = options.parent
+if (parent && !options.abstract) {
+  while (parent.$options.abstract && parent.$parent) {
+    parent = parent.$parent
+  }
+  parent.$children.push(vm)
+}
+vm.$parent = parent
+```
+组件之间建立父子关系会跳过该抽象组件，这个例子中的
 keep-alive生成的VNode为:
 ```
 {
@@ -282,48 +298,12 @@ keep-alive生成的VNode为:
 patch (oldVnode, vnode, hydrating, removeOnly)
 ```
 ...
-if (isUndef(oldVnode)) {
-    // empty mount (likely as component), create new root element
-    isInitialPatch = true;
-    createElm(vnode, insertedVnodeQueue);
-    } else {
-    var isRealElement = isDef(oldVnode.nodeType);
-    if (!isRealElement && sameVnode(oldVnode, vnode)) {
-        // patch existing root node
-        patchVnode(oldVnode, vnode, insertedVnodeQueue, null, null, removeOnly);
-    } else {
-        if (isRealElement) {
-        // mounting to a real element
-        // check if this is server-rendered content and if we can perform
-        // a successful hydration.
-        if (oldVnode.nodeType === 1 && oldVnode.hasAttribute(SSR_ATTR)) {
-            oldVnode.removeAttribute(SSR_ATTR);
-            hydrating = true;
-        }
-        // either not server-rendered, or hydration failed.
-        // create an empty node and replace it
-        oldVnode = emptyNodeAt(oldVnode);
-        }
-
-    // replacing existing element
-    var oldElm = oldVnode.elm;
-    var parentElm = nodeOps.parentNode(oldElm);
-
-    // create new node
-    createElm(
-    vnode,
-    insertedVnodeQueue,
-    // extremely rare edge case: do not insert if old element is in a
-    // leaving transition. Only happens when combining transition +
-    // keep-alive + HOCs. (#4590)
-    oldElm._leaveCb ? null : parentElm,
-    nodeOps.nextSibling(oldElm)
-    );
+patchVnode(oldVnode, vnode, insertedVnodeQueue, null, null, removeOnly);
 }
 ...
 
 ```
-递归的创建节点然后挂载到parentElem上，对于子组件，会执行$createElement函数, 如果是普通元素节点则直接返回
+递归的创建节点然后挂载到parentElem上，对于子组件，会执行$createElement函数, 如果是普通元素节点则直接返回，过程如下:
 ```
 function createComponent (vnode, insertedVnodeQueue, parentElm, refElm) {
     // i 是insert、init、prepatch、destroy的钩子对象
@@ -460,7 +440,7 @@ var Sub = function VueComponent (options) {
     );
     Sub['super'] = Super
 ```
-在initRender初始函数中会初始化`$slots={default: [vnode]}`,获取需要渲染的子组件的`VNode、$scopedSlots、vm.$createElement`; 子组件_render执行过程会处理
+在initRender初始函数中会初始化`$slots={default: [vnode]}`, 因为 <keep-alive> 是在标签内部写 DOM，所以可以先获取到它的默认插槽，然后再获取到它的第一个子节点。<keep-alive> 只处理第一个子元素，所以一般和它搭配使用的有 component 动态组件或者是 router-view获取需要渲染的子组件的`VNode、$scopedSlots、vm.$createElement`; 子组件_render执行过程会处理
 ```
 vm.$scopedSlots = normalizeScopedSlots {
     ...
@@ -517,7 +497,7 @@ var KeepAlive = {
         var ref = this;
         var include = ref.include;
         var exclude = ref.exclude;
-        // include和exclude属性是否匹配, 不匹配则直接返回vnode
+        // 如果满足了配置 include 且不匹配或者是配置了 exclude 且匹配，那么就直接返回这个组件的 vnode
         if (
           // not included
           (include && (!name || !matches(include, name))) ||
@@ -546,6 +526,7 @@ var KeepAlive = {
           cache[key] = vnode;
           keys.push(key);
           // prune oldest entry
+          // 如果配置了 max 并且缓存的长度超过了 this.max，还要从缓存中删除第一个
           if (this.max && keys.length > parseInt(this.max)) {
             pruneCacheEntry(cache, keys[0], keys, this._vnode);
           }
@@ -557,7 +538,24 @@ var KeepAlive = {
     }
   };
 ```
-vnode为:
+其中pruneCacheEntry函数为:
+```
+function pruneCacheEntry (
+  cache: VNodeCache,
+  key: string,
+  keys: Array<string>,
+  current?: VNode
+) {
+  const cached = cache[key]
+  if (cached && (!current || cached.tag !== current.tag)) {
+    cached.componentInstance.$destroy()
+  }
+  cache[key] = null 
+  remove(keys, key)
+}
+```
+如果缓存的组件标签与当前渲染组件的tag不一致时，也执行删除缓存的组件实例的 $destroy 方法,最后设置 vnode.data.keepAlive = true。此外keep-alive还会通过watch检测传入的include 和 exclude 的变化，对缓存做处理即对 cache 做遍历，发现缓存的节点名称和新的规则没有匹配上的时候，就把这个缓存节点从缓存中摘除。
+keep-alive的子组件生成的vnode为:
 ```
 {
   asyncFactory: undefined
@@ -604,4 +602,151 @@ vnode为:
 with(this){return _c('div',[_v("view component1")])}
 })
 ```
-最后是挂载生成的newElem Dom元素，通过removeVnodes(parentElm, [oldVnode], 0, 0);将oldElem删除。
+最后是渲染过程。
+### 首次渲染
+在**中会触发componentVNodeHooks中的init钩子
+```
+// 前面设置了keep-alive属性为true,故vnode.data.keepAlive = true
+init: function init (vnode, hydrating) {
+  if (
+    vnode.componentInstance &&
+    !vnode.componentInstance._isDestroyed &&
+    vnode.data.keepAlive
+  ) {
+    // kept-alive components, treat as a patch
+    var mountedNode = vnode; // work around flow
+    componentVNodeHooks.prepatch(mountedNode, mountedNode);
+  } else {
+    // 将动态组件view1挂载到父级(非keep-alive组件)
+    var child = vnode.componentInstance = createComponentInstanceForVnode(
+      vnode,
+      activeInstance
+    );
+    // 子节点挂载到父组件
+    child.$mount(hydrating ? vnode.elm : undefined, hydrating);
+  }
+}
+```
+逐级挂载，最后渲染到页面。
+### 更新过程
+patchVnode 在做各种 diff 之前，会先执行 prepatch 的钩子函数，如下:
+```
+ var data = vnode.data;
+  if (isDef(data) && isDef(i = data.hook) && isDef(i = i.prepatch)) {
+    i(oldVnode, vnode);
+  }
+```
+即
+```
+prepatch: function prepatch (oldVnode, vnode) {
+      var options = vnode.componentOptions;
+      var child = vnode.componentInstance = oldVnode.componentInstance;
+      updateChildComponent(
+        child,
+        options.propsData, // updated props
+        options.listeners, // updated listeners
+        vnode, // new parent vnode
+        options.children // new children
+      );
+    },
+```
+里面的关键代码就是执行
+updateChildComponent(
+        child,
+        options.propsData, // updated props
+        options.listeners, // updated listeners
+        vnode, // new parent vnode
+        options.children // new children
+      );
+```
+该函数的核心代码:
+```
+// renderChildren为最新的子组件[VNode]，vm.$options._renderChildren表示老的子组件[VNode]
+```
+var needsForceUpdate = !!(
+      renderChildren ||               // has new static slots
+      vm.$options._renderChildren ||  // has old static slots
+      hasDynamicScopedSlot
+    );
+// resolve slots + force update if has children
+if (needsForceUpdate) {
+  vm.$slots = resolveSlots(renderChildren, parentVnode.context);
+  vm.$forceUpdate();
+}
+```
+resolveSlots将新的子组件的VNode赋值给vm.$slots，即
+```
+vm.$slots = {
+    default: [VNode]
+}
+```
+再进行强制更新，重新渲染
+```
+Vue.prototype.$forceUpdate = function () {
+  var vm = this;
+  if (vm._watcher) {
+    vm._watcher.update();
+  }
+};
+```
+再次执行到createComponent函数时
+```
+function createComponent (vnode, insertedVnodeQueue, parentElm, refElm) {
+  var i = vnode.data;
+  if (isDef(i)) {
+    // 更新时，isReactivated为true
+    var isReactivated = isDef(vnode.componentInstance) && i.keepAlive;
+    if (isDef(i = i.hook) && isDef(i = i.init)) {
+      i(vnode, false /* hydrating */);
+    }
+    // after calling the init hook, if the vnode is a child component
+    // it should've created a child instance and mounted it. the child
+    // component also has set the placeholder vnode's elm.
+    // in that case we can just return the element and be done.
+    if (isDef(vnode.componentInstance)) {
+      initComponent(vnode, insertedVnodeQueue);
+      insert(parentElm, vnode.elm, refElm);
+      if (isTrue(isReactivated)) {
+        reactivateComponent(vnode, insertedVnodeQueue, parentElm, refElm);
+      }
+      return true
+    }
+  }
+}
+```
+其中data为:
+```
+{
+    hook: {init: ƒ, prepatch: ƒ, insert: ƒ, destroy: ƒ}
+    keepAlive: true,
+    on: undefined,
+    tag: "component",
+}
+```
+上面的`i(vnode, false /* hydrating */)`,执行
+```
+init: function init (vnode, hydrating) {
+  if (
+    vnode.componentInstance &&
+    !vnode.componentInstance._isDestroyed &&
+    vnode.data.keepAlive
+  ) {
+    // 更新过程的patch
+    // kept-alive components, treat as a patch
+    var mountedNode = vnode; // work around flow
+    componentVNodeHooks.prepatch(mountedNode, mountedNode);
+  }
+}
+```
+在执行 init 钩子函数的时候不会再执行组件的 mount 过程，回到createComponent函数，在 isReactivated 为 true 的情况下会执行 reactivateComponent 方法
+```
+function reactivateComponent (vnode, insertedVnodeQueue, parentElm, refElm) {
+      var i;
+      var innerNode = vnode;
+      。。。
+      // unlike a newly created component,
+      // a reactivated keep-alive component doesn't insert itself
+      insert(parentElm, vnode.elm, refElm);
+    }
+```
+把缓存的 DOM 对象直接插入到目标元素。

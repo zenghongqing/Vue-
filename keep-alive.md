@@ -604,7 +604,7 @@ with(this){return _c('div',[_v("view component1")])}
 ```
 最后是渲染过程。
 ### 首次渲染
-在**中会触发componentVNodeHooks中的init钩子
+在最后的渲染阶段，createElm函数执行createComponent，会触发componentVNodeHooks中的init钩子，初次渲染vnode.componentInstance为undefined，vnode.data.keepAlive设置了为true，所以会进入else，走正常的mount流程:
 ```
 // 前面设置了keep-alive属性为true,故vnode.data.keepAlive = true
 init: function init (vnode, hydrating) {
@@ -628,13 +628,12 @@ init: function init (vnode, hydrating) {
 }
 ```
 逐级挂载，最后渲染到页面。
-### 更新过程
-patchVnode 在做各种 diff 之前，会先执行 prepatch 的钩子函数，如下:
+### 缓存渲染过程
+当一个组件切换到另一个组件时，在patch过程中会对比新旧vnode以及它们的子节点，而keep-alive组件的更新，首先在组件patchVnode过程中，一个元素即将被修复时会执行prepatch钩子函数:
 ```
- var data = vnode.data;
-  if (isDef(data) && isDef(i = data.hook) && isDef(i = i.prepatch)) {
-    i(oldVnode, vnode);
-  }
+if (isDef(data) && isDef(i = data.hook) && isDef(i = i.prepatch)) {
+  i(oldVnode, vnode);
+}
 ```
 即
 ```
